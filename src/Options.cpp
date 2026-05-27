@@ -968,12 +968,12 @@ BOOL CGetSetOptions::SetQuickPasteSize(CSize size)
 
 void CGetSetOptions::GetQuickPasteSize(CSize &size)
 {	
-	size.cx = GetResolutionProfileLong("QuickPasteCX", 300);
-	size.cy = GetResolutionProfileLong("QuickPasteCY", 300);
+	size.cx = GetResolutionProfileLong("QuickPasteCX", 380);
+	size.cy = GetResolutionProfileLong("QuickPasteCY", 500);
 	if(size.cx <= 0 && size.cy <= 0)
 	{
-		size.cx = 300;
-		size.cy = 300;
+		size.cx = 380;
+		size.cy = 500;
 	}
 }
 
