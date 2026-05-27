@@ -1,44 +1,50 @@
-<Ditto_Theme_File Version="2.5" Author="Zigboom" Notes="DarkTheme">
+<Ditto_Theme_File Version="3" Author="Windows+V Match" Notes="Matches Windows 11 Clipboard History dark mode">
 
-	<CaptionLeft>RGB(0,0,0)</CaptionLeft>
-	<CaptionRight>RGB(51,51,51)</CaptionRight>
+	<CaptionLeft>RGB(34,34,34)</CaptionLeft>
+	<CaptionRight>RGB(34,34,34)</CaptionRight>
 
-	<CaptionLeftTopMost>RGB(0,0,0)</CaptionLeftTopMost>
-	<CaptionRightTopMost>RGB(51,51,51)</CaptionRightTopMost>
+	<CaptionLeftTopMost>RGB(40,40,40)</CaptionLeftTopMost>
+	<CaptionRightTopMost>RGB(40,40,40)</CaptionRightTopMost>
 
-	<CaptionLeftNotConnected>RGB(0,0,0)</CaptionLeftNotConnected>
-	<CaptionRightNotConnected>RGB(51,51,51)</CaptionRightNotConnected>
+	<CaptionLeftNotConnected>RGB(180,60,60)</CaptionLeftNotConnected>
+	<CaptionRightNotConnected>RGB(180,60,60)</CaptionRightNotConnected>
 
-	<CaptionTextColor>RGB(127,127,127)</CaptionTextColor>
+	<CaptionTextColor>RGB(200,200,200)</CaptionTextColor>
 
-	<ListBoxOddRowsBG>RGB(24,24,24)</ListBoxOddRowsBG>
-	<ListBoxEvenRowsBG>RGB(0,0,0)</ListBoxEvenRowsBG>
+	<ListBoxOddRowsBG>RGB(47,47,47)</ListBoxOddRowsBG>
+	<ListBoxEvenRowsBG>RGB(42,42,42)</ListBoxEvenRowsBG>
 
-	<ListBoxOddRowsText>RGB(153,153,153)</ListBoxOddRowsText>
-	<ListBoxEvenRowsText>RGB(153,153,153)</ListBoxEvenRowsText>
+	<ListBoxOddRowsText>RGB(232,232,232)</ListBoxOddRowsText>
+	<ListBoxEvenRowsText>RGB(232,232,232)</ListBoxEvenRowsText>
 
-	<ListBoxSelectedBG>RGB(64,64,64)</ListBoxSelectedBG>
-	<ListBoxSelectedNoFocusBG>RGB(64,64,64)</ListBoxSelectedNoFocusBG>
+	<ListBoxSelectedBG>RGB(58,58,62)</ListBoxSelectedBG>
+	<ListBoxSelectedNoFocusBG>RGB(55,55,58)</ListBoxSelectedNoFocusBG>
 
-	<ListBoxSelectedText>RGB(238,238,238)</ListBoxSelectedText>
-	<ListBoxSelectedNoFocusText>RGB(220,220,220)</ListBoxSelectedNoFocusText>
+	<ListBoxSelectedText>RGB(255,255,255)</ListBoxSelectedText>
+	<ListBoxSelectedNoFocusText>RGB(232,232,232)</ListBoxSelectedNoFocusText>
 
-	<Border>RGB(0,0,0)</Border>
-	<BorderTopMost>RGB(0,0,0)</BorderTopMost>
-	<BorderNotConnected>RGB(255,0,0)</BorderNotConnected>
+	<ClipPastedColor>RGB(96,165,250)</ClipPastedColor>
 
-	<GroupTreeBG>RGB(0,0,0)</GroupTreeBG>
-	<GroupTreeText>RGB(153,153,153)</GroupTreeText>
+	<MainWindowBG>RGB(34,34,34)</MainWindowBG>
 
-	<CaptionSize></CaptionSize>
-	<CaptionFontSize></CaptionFontSize>
+	<SearchTextBoxFocusBG>RGB(47,47,47)</SearchTextBoxFocusBG>
+	<SearchTextBoxFocusText>RGB(232,232,232)</SearchTextBoxFocusText>
+	<SearchTextBoxFocusBorder>RGB(72,72,76)</SearchTextBoxFocusBorder>
+	<SearchTextHighlight>RGB(96,165,250)</SearchTextHighlight>
 
-	<DescriptionWindowBG>RGB(100,100,100)</DescriptionWindowBG>
+	<Border>RGB(48,48,48)</Border>
+	<BorderTopMost>RGB(56,56,56)</BorderTopMost>
+	<BorderNotConnected>RGB(180,60,60)</BorderNotConnected>
+
+	<GroupTreeBG>RGB(38,38,38)</GroupTreeBG>
+	<GroupTreeText>RGB(200,200,200)</GroupTreeText>
+
+	<CaptionSize>26</CaptionSize>
+	<CaptionFontSize>13</CaptionFontSize>
+
+	<DescriptionWindowBG>RGB(38,38,38)</DescriptionWindowBG>
 	<DescriptionWindowText>RGB(200,200,200)</DescriptionWindowText>
 
-	<MainWindowBG>RGB(0,0,0)</MainWindowBG>
-
-	<SearchTextBoxFocusBG>RGB(24,24,24)</SearchTextBoxFocusBG>
-	<SearchTextBoxFocusText>RGB(127,127,127)</SearchTextBoxFocusText>
+	<ListSmallQuickPasteIndexColor>RGB(148,148,148)</ListSmallQuickPasteIndexColor>
 
 </Ditto_Theme_File>
