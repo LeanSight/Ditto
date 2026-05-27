@@ -892,7 +892,7 @@ BOOL CGetSetOptions::SetLinesPerRow(long lLines)
 
 long CGetSetOptions::GetLinesPerRow()
 {
-	return GetProfileLong("LinesPerRow", 2);
+	return GetProfileLong("LinesPerRow", 4);
 }
 
 BOOL CGetSetOptions::GetRunOnStartUp()
