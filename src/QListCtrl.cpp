@@ -509,19 +509,50 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 			}
 		}
 
-		pDC->FillSolidRect(rcItem, crBkgnd);
+		int cardGap = m_windowDpi->Scale(2);
+		int cardInsetX = m_windowDpi->Scale(4);
+		int cornerRadius = m_windowDpi->Scale(4);
+
+		pDC->FillSolidRect(rcItem, CGetSetOptions::m_Theme.MainWindowBG());
+
+		CRect rcCard = rcItem;
+		rcCard.left += cardInsetX;
+		rcCard.right -= cardInsetX;
+		rcCard.top += cardGap;
+		rcCard.bottom -= cardGap;
+
+		{
+			CPen nullPen(PS_NULL, 0, RGB(0, 0, 0));
+			CBrush cardBrush(crBkgnd);
+			CPen* pOldPen2 = pDC->SelectObject(&nullPen);
+			CBrush* pOldBrush2 = pDC->SelectObject(&cardBrush);
+			pDC->RoundRect(rcCard, CPoint(cornerRadius, cornerRadius));
+			pDC->SelectObject(pOldPen2);
+			pDC->SelectObject(pOldBrush2);
+		}
+
+		if (rItem.state & LVIS_SELECTED)
+		{
+			CPen borderPen(PS_SOLID, 1, CGetSetOptions::m_Theme.Border());
+			CPen* pOldPen2 = pDC->SelectObject(&borderPen);
+			CBrush* pOldBrush2 = (CBrush*)pDC->SelectObject(GetStockObject(NULL_BRUSH));
+			pDC->RoundRect(rcCard, CPoint(cornerRadius, cornerRadius));
+			pDC->SelectObject(pOldPen2);
+			pDC->SelectObject(pOldBrush2);
+		}
+
 		nOldBKMode = pDC->SetBkMode(TRANSPARENT);
 
-		CRect rcText = rcItem;
+		CRect rcText = rcCard;
 		rcText.left += m_windowDpi->Scale(ROW_LEFT_BORDER);
 		rcText.top += m_windowDpi->Scale(ROW_TOP_BORDER / 2);
 		rcText.bottom -= m_windowDpi->Scale(ROW_BOTTOM_BORDER / 2);
 
 		if (m_showIfClipWasPasted &&
 			strSymbols.GetLength() > 0 &&
-			strSymbols.Find(_T("<pasted>")) >= 0) //clip was pasted from ditto
+			strSymbols.Find(_T("<pasted>")) >= 0)
 		{
-			CRect pastedRect(rcItem);
+			CRect pastedRect(rcCard);
 			pastedRect.left++;
 			pastedRect.right = pastedRect.left + m_windowDpi->Scale(2);
 
