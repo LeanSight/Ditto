@@ -27,6 +27,9 @@ public:
 	static WORD		PaletteSize(LPSTR lpDIB);
 	static WORD		DIBNumColors(LPSTR lpDIB);
 	static bool		DrawDIB(CDC* pDC, HANDLE hData, int nLeft, int nRight, int& nWidth);
+	// Win+V-style image card: scale the clip image to COVER rc (fill width+height), center-cropping
+	// the overflow, so the preview fills the card edge-to-edge instead of a small centered thumbnail.
+	static BOOL		DrawImageCover(void* pClip2, CDC* pDC, const CRect& rc, int cornerRadius = 0);
 
 };
 

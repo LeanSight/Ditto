@@ -892,7 +892,7 @@ BOOL CGetSetOptions::SetLinesPerRow(long lLines)
 
 long CGetSetOptions::GetLinesPerRow()
 {
-	return GetProfileLong("LinesPerRow", 4);
+	return GetProfileLong("LinesPerRow", 2);
 }
 
 BOOL CGetSetOptions::GetRunOnStartUp()
@@ -1529,7 +1529,7 @@ BOOL CGetSetOptions::GetFont(LOGFONT &font)
 	}
 
 	ZeroMemory(&font, sizeof(font));
-	font.lfHeight = -13;
+	font.lfHeight = -14;   // Fluent Body (14px) — list-item content is the dominant reading element
 	font.lfWeight = 400;
 	font.lfCharSet = 1;
 	STRCPY(font.lfFaceName, _T("Segoe UI"));

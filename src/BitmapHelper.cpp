@@ -98,6 +98,59 @@ BOOL CBitmapHelper::GetCBitmap(void* pClip2, CDC* pDC, CBitmap* pBitMap, int nMa
 	return true;
 }
 
+BOOL CBitmapHelper::DrawImageCover(void* pClip2, CDC* pDC, const CRect& rc, int cornerRadius)
+{
+	CClipFormat* pClip = (CClipFormat*)pClip2;
+
+	if (pClip->m_cfType != CF_DIB && pClip->m_cfType != theApp.m_PNG_Format)
+		return FALSE;
+	if (rc.Width() <= 0 || rc.Height() <= 0)
+		return FALSE;
+
+	Gdiplus::Bitmap* gdipBitmap = pClip->CreateGdiplusBitmap();
+	if (gdipBitmap == NULL)
+		return FALSE;
+
+	const UINT sw = gdipBitmap->GetWidth();
+	const UINT sh = gdipBitmap->GetHeight();
+	if (sw == 0 || sh == 0)
+	{
+		delete gdipBitmap;
+		return FALSE;
+	}
+
+	// COVER: scale so the image fills rc on both axes, center-crop the overflowing axis.
+	double scale = max((double)rc.Width() / sw, (double)rc.Height() / sh);
+	double cropW = rc.Width() / scale;
+	double cropH = rc.Height() / scale;
+	double srcX = (sw - cropW) / 2.0;
+	double srcY = (sh - cropH) / 2.0;
+
+	// Round the preview's corners to match the card shell (Win+V image cards are rounded).
+	CRgn clipRgn;
+	if (cornerRadius > 0)
+	{
+		clipRgn.CreateRoundRectRgn(rc.left, rc.top, rc.right + 1, rc.bottom + 1, cornerRadius * 2, cornerRadius * 2);
+		pDC->SelectClipRgn(&clipRgn);
+	}
+
+	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
+	Gdiplus::InterpolationMode interpolationMode = Gdiplus::InterpolationModeHighQualityBicubic;
+	if (CGetSetOptions::GetFastThumbnailMode())
+		interpolationMode = Gdiplus::InterpolationModeBicubic;
+	graphics.SetInterpolationMode(interpolationMode);
+	graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+
+	Gdiplus::Rect dest(rc.left, rc.top, rc.Width(), rc.Height());
+	graphics.DrawImage(gdipBitmap, dest, (REAL)srcX, (REAL)srcY, (REAL)cropW, (REAL)cropH, Gdiplus::UnitPixel);
+
+	if (cornerRadius > 0)
+		pDC->SelectClipRgn(NULL);
+
+	delete gdipBitmap;
+	return TRUE;
+}
+
 BOOL CBitmapHelper::GetCBitmap(CClipFormats& clips, CDC* pDC, CBitmap* pBitMap, BOOL horizontal)
 {
 	BOOL bRet = FALSE;

@@ -24,9 +24,15 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-#define ROW_TOP_BORDER			20
-#define ROW_BOTTOM_BORDER		20
+#define ROW_TOP_BORDER			14
+#define ROW_BOTTOM_BORDER		14
 #define ROW_LEFT_BORDER			10
+
+// Win+V shows image clips as large previews and text clips as compact cards. The list
+// control is fixed-row-height (LVS_OWNERDRAWFIXED), so we make the ROW pitch tall enough
+// for a big image preview, then draw a SHORT card for text clips (top-aligned, content-fit)
+// and a tall card for image clips -- yielding Win+V-style variable card heights.
+#define IMAGE_CARD_LINES		5
 #define COLOR_SHADOW			RGB(245, 245, 245)
 #define DUMMY_COL_WIDTH			2
 
@@ -421,7 +427,10 @@ void CQListCtrl::MeasureItem(LPMEASUREITEMSTRUCT lpMeasureItemStruct)
 	GetTextMetrics(hDC, &tm);
 	if (m_windowDpi != NULL)
 	{
-		lpMeasureItemStruct->itemHeight = m_windowDpi->Scale(ROW_TOP_BORDER) + ((tm.tmHeight + tm.tmExternalLeading) * m_linesPerRow) + m_windowDpi->Scale(ROW_BOTTOM_BORDER);
+		// Fixed row pitch tall enough for a large image preview; text clips draw a shorter
+		// card within this row (see OnCustomdrawList) so they stay compact like Win+V.
+		int pitchLines = max(m_linesPerRow, IMAGE_CARD_LINES);
+		lpMeasureItemStruct->itemHeight = m_windowDpi->Scale(ROW_TOP_BORDER) + ((tm.tmHeight + tm.tmExternalLeading) * pitchLines) + m_windowDpi->Scale(ROW_BOTTOM_BORDER);
 		m_rowHeight = lpMeasureItemStruct->itemHeight;
 	}
 	SelectObject(hDC, hFontOld);
@@ -461,6 +470,24 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		// Get the rect that bounds the text label.
 		GetItemRect(nItem, rcItem, LVIR_SELECTBOUNDS);
+
+		// The list column is 2500px wide (and can be sized wider than the visible popup), so
+		// rcItem.right is not the visible width. The list's DIRECT parent is the QPasteClass
+		// popup, whose client width IS the visible width. (NOT GetTopLevelParent — that walks
+		// to the hidden owner main frame, ~120px, which collapses cards to a sliver.) Subtract
+		// the scrollbar lane so cards/text keep a right margin and word-wrap in-window.
+		{
+			int visibleRight = 0;
+			CWnd* pParent = GetParent();
+			if (pParent != NULL)
+			{
+				CRect rcParent;
+				pParent->GetClientRect(&rcParent);
+				visibleRight = rcParent.right - ::GetSystemMetrics(SM_CXVSCROLL);
+			}
+			if (visibleRight > 0 && rcItem.right > visibleRight)
+				rcItem.right = visibleRight;
+		}
 
 		COLORREF OldColor = -1;
 		int nOldBKMode = -1;
@@ -509,9 +536,10 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 			}
 		}
 
-		int cardGap = m_windowDpi->Scale(2);
-		int cardInsetX = m_windowDpi->Scale(4);
-		int cornerRadius = m_windowDpi->Scale(4);
+		// Win+V geometry: compact cards (2-line wrap), ~10px even gap and 8px radius
+		int cardGap = m_windowDpi->Scale(5);
+		int cardInsetX = m_windowDpi->Scale(10);
+		int cornerRadius = m_windowDpi->Scale(8);
 
 		pDC->FillSolidRect(rcItem, CGetSetOptions::m_Theme.MainWindowBG());
 
@@ -520,6 +548,12 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 		rcCard.right -= cardInsetX;
 		rcCard.top += cardGap;
 		rcCard.bottom -= cardGap;
+
+		// Win+V: image clips fill the tall card for a large preview; text clips render up to
+		// m_linesPerRow lines top-aligned (the remaining card space is intentional breathing
+		// room, like Win+V's reserved area below short clips). Card height stays uniform so
+		// inter-card gaps are even.
+		bool isImageClip = (GetItem_CF_DIB_ClipFormat(nItem) != NULL);
 
 		{
 			CPen nullPen(PS_NULL, 0, RGB(0, 0, 0));
@@ -533,12 +567,15 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		if (rItem.state & LVIS_SELECTED)
 		{
+			// Win+V selection: clear 2px outline, inset so the stroke isn't clipped
+			CRect rcBorder = rcCard;
+			rcBorder.DeflateRect(1, 1);
 			CBrush hollowBrush;
 			hollowBrush.CreateStockObject(HOLLOW_BRUSH);
-			CPen borderPen(PS_SOLID, 1, CGetSetOptions::m_Theme.Border());
+			CPen borderPen(PS_SOLID, m_windowDpi->Scale(2), CGetSetOptions::m_Theme.ListBoxSelectedText());
 			CPen* pOldPen2 = pDC->SelectObject(&borderPen);
 			CBrush* pOldBrush2 = pDC->SelectObject(&hollowBrush);
-			pDC->RoundRect(rcCard, CPoint(cornerRadius, cornerRadius));
+			pDC->RoundRect(rcBorder, CPoint(cornerRadius, cornerRadius));
 			pDC->SelectObject(pOldPen2);
 			pDC->SelectObject(pOldBrush2);
 		}
@@ -547,8 +584,25 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		CRect rcText = rcCard;
 		rcText.left += m_windowDpi->Scale(ROW_LEFT_BORDER);
-		rcText.top += m_windowDpi->Scale(ROW_TOP_BORDER / 2);
+		rcText.right -= m_windowDpi->Scale(10);  // Win+V right margin
+		rcText.top += m_windowDpi->Scale(12);    // Win+V internal top pad, text is top-aligned
 		rcText.bottom -= m_windowDpi->Scale(ROW_BOTTOM_BORDER / 2);
+
+		// Cap text clips to m_linesPerRow lines (top-aligned) so long text wraps like Win+V
+		// (2-3 lines) instead of filling the tall image-sized card. Image clips keep the full
+		// card height so the preview is large.
+		if (!isImageClip)
+		{
+			CFont* pCapFont = GetFont();
+			CFont* pOldCap = pDC->SelectObject(pCapFont);
+			TEXTMETRIC tmCap;
+			pDC->GetTextMetrics(&tmCap);
+			pDC->SelectObject(pOldCap);
+			int lineH = tmCap.tmHeight + tmCap.tmExternalLeading;
+			int capBottom = rcText.top + (m_linesPerRow * lineH);
+			if (capBottom < rcText.bottom)
+				rcText.bottom = capBottom;
+		}
 
 		if (m_showIfClipWasPasted &&
 			strSymbols.GetLength() > 0 &&
@@ -588,6 +642,11 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		DrawBitMap(nItem, rcText, pDC, csText);
 
+		// Image clips: drop the bare "CF_DIB" format-name label so the thumbnail stands
+		// alone like Win+V (which shows the image preview with no filename/format text).
+		if (csText.Find(_T("CF_DIB")) == 0 && GetItem_CF_DIB_ClipFormat(nItem) != NULL)
+			csText.Empty();
+
 		// draw the symbol box
 		if (strSymbols.GetLength() > 0)
 		{
@@ -624,16 +683,21 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		if (DrawRtfText(nItem, rcText, pDC) == FALSE)
 		{
+			// GDI honors hard breaks only on CR-LF; normalize lone \n so DT_WORDBREAK
+			// wraps correctly and embedded LFs don't render as box glyphs (Win+V wrapping)
+			csText.Replace(_T("\r\n"), _T("\n"));
+			csText.Replace(_T("\n"), _T("\r\n"));
+
 			auto highlightColor = CGetSetOptions::m_Theme.SearchTextHighlight();
 			//use unprintable characters so it doesn't find copied html to convert
 			if (m_searchText.GetLength() > 0 &&
 				FindNoCaseAndInsert(csText, m_searchText, StrF(_T("\x01\x04 color='#%02x%02x%02x'\x02"), GetRValue(highlightColor), GetGValue(highlightColor), GetBValue(highlightColor)), _T("\x01\x03\x04\x02"), m_linesPerRow) > 0)
 			{
-				DrawHTML(pDC->m_hDC, csText, csText.GetLength(), rcText, DT_VCENTER | DT_EXPANDTABS | DT_NOPREFIX);
+				DrawHTML(pDC->m_hDC, csText, csText.GetLength(), rcText, DT_WORDBREAK | DT_TOP | DT_EXPANDTABS | DT_NOPREFIX);
 			}
 			else
 			{
-				pDC->DrawText(csText, rcText, DT_VCENTER | DT_EXPANDTABS | DT_NOPREFIX);
+				pDC->DrawText(csText, rcText, DT_WORDBREAK | DT_TOP | DT_EXPANDTABS | DT_NOPREFIX);
 			}
 		}
 
@@ -655,6 +719,8 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 			ScreenToClient(crClient);
 
 			CRect crHotKey = rcItem;
+			crHotKey.top = rcCard.top;        // align the index/gutter with the (variable-height) card
+			crHotKey.bottom = rcCard.bottom;
 
 			int extraFromClipWasPaste = 0;
 			if (m_showIfClipWasPasted)
@@ -672,8 +738,8 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 			pDC->DrawText(cs, crHotKey, DT_BOTTOM);
 
-			pDC->MoveTo(CPoint(rcItem.left + m_windowDpi->Scale(8 + extraFromClipWasPaste), rcItem.top));
-			pDC->LineTo(CPoint(rcItem.left + m_windowDpi->Scale(8 + extraFromClipWasPaste), rcItem.bottom));
+			pDC->MoveTo(CPoint(rcItem.left + m_windowDpi->Scale(8 + extraFromClipWasPaste), rcCard.top));
+			pDC->LineTo(CPoint(rcItem.left + m_windowDpi->Scale(8 + extraFromClipWasPaste), rcCard.bottom));
 
 			pDC->SelectObject(hOldFont);
 			pDC->SetTextColor(localOldTextColor);
@@ -1208,16 +1274,12 @@ BOOL CQListCtrl::DrawBitMap(int nItem, CRect& crRect, CDC* pDC, const CString& c
 	CClipFormatQListCtrl* format = GetItem_CF_DIB_ClipFormat(nItem);
 	if (format != NULL)
 	{
-		HGLOBAL smallImage = format->GetDibFittingToHeight(pDC, crRect.Height());
-		if (smallImage != NULL)
+		// Win+V image card: fill the whole card with the preview (cover + center-crop) so it
+		// reads as a large edge-to-edge image, not a small centered thumbnail with side bands.
+		// Round the corners so the image card shares the text cards' rounded shell.
+		if (CBitmapHelper::DrawImageCover(format, pDC, crRect, m_windowDpi->Scale(6)))
 		{
-			//Will return the width of the bitmap in nWidth
-			int nWidth = 0;
-			if (CBitmapHelper::DrawDIB(pDC, smallImage, crRect.left, crRect.top, nWidth))
-			{
-				// adjust the rect so other information can be drawn next to the thumbnail
-				crRect.left += nWidth + 3;
-			}
+			crRect.left = crRect.right;   // image fills the card; no text gutter to reserve
 		}
 	}
 	else if (csDescription.Find(_T("CF_DIB")) == 0)
@@ -2084,6 +2146,11 @@ void CQListCtrl::SetLogFont(LOGFONT& font)
 {
 	m_Font.DeleteObject();
 	m_boldFont.DeleteObject();
+
+	// Win+V/WinUI3 renders text with grayscale anti-aliasing, not ClearType subpixel. On the
+	// dark card background ClearType adds blue/orange edge fringes that read as a warm tint;
+	// force ANTIALIASED_QUALITY so the list text is neutral gray like Win+V.
+	font.lfQuality = ANTIALIASED_QUALITY;
 
 	m_Font.CreateFontIndirect(&font);
 	font.lfWeight = 600;
