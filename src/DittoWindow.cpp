@@ -35,7 +35,7 @@ CDittoWindow::CDittoWindow(void)
 	m_useCustomWindowTitle = false;
 	m_buttonDownOnCaption = false;
 	m_crFullSizeWindow.SetRectEmpty();	
-	m_captionPosition = CAPTION_RIGHT;
+	m_captionPosition = CAPTION_TOP;
 	
 }
 

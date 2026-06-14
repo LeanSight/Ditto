@@ -2210,7 +2210,7 @@ void CQPasteWnd::UpdateFont()
 	m_GroupTree.SetFont(&m_SearchFont);
 
 	m_groupFont.DeleteObject();
-	m_groupFont.CreateFont(-m_DittoWindow.m_dpi.Scale(12), 0, 0, 0, 400, 0, 1, 0, DEFAULT_CHARSET, 3, 2, 1, 34, _T("Segoe UI"));
+	m_groupFont.CreateFont(-m_DittoWindow.m_dpi.Scale(14), 0, 0, 0, 400, 0, 1, 0, DEFAULT_CHARSET, 3, 2, 1, 34, _T("Segoe UI"));
 	m_stGroup.SetFont(&m_groupFont);
 	m_stGroup.SetBkColor(CGetSetOptions::m_Theme.MainWindowBG());
 	m_stGroup.SetTextColor(CGetSetOptions::m_Theme.ListBoxEvenRowsText());

@@ -1303,7 +1303,7 @@ void CGetSetOptions::SetCaptionPos(long lPos)
 }
 long CGetSetOptions::GetCaptionPos()			
 {	
-	return GetProfileLong("CaptionPos", CAPTION_RIGHT);	
+	return GetProfileLong("CaptionPos", CAPTION_TOP);
 }
 
 void CGetSetOptions::SetAutoHide(BOOL bAutoHide)

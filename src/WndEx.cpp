@@ -194,6 +194,16 @@ void CWndEx::OnNcLButtonUp(UINT nHitTest, CPoint point)
 		{
 			MinMaxWindow(SWAP_MIN_MAX);
 			OnNcPaint();
+			// Roll-up/down resizes the frame; OnNcPaint only repaints the caption. On
+			// expand, force the client + child list to relayout (WM_SIZE) and fully
+			// repaint so the clipboard cards are restored instead of left blank/stale.
+			if (m_DittoWindow.m_bMinimized == false)
+			{
+				CRect rcClient;
+				GetClientRect(&rcClient);
+				SendMessage(WM_SIZE, SIZE_RESTORED, MAKELPARAM(rcClient.Width(), rcClient.Height()));
+				RedrawWindow(NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_UPDATENOW);
+			}
 		}
 		return;
 	}

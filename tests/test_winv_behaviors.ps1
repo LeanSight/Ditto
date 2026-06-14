@@ -158,12 +158,13 @@ if (Test-Path $themePath) {
 }
 
 # ============================================================
-# Behavior 6: Fluent type ramp — content >= chrome, no inversion
+# Behavior 6: Fluent type ramp — content and chrome at Body 14, no inversion
 # Given  Ditto source
 # When   the item, search and group font sizes are checked
-# Then   item=14 (Body), search=14 (Body), group=12 (Caption): 14>=14>12
+# Then   item=14, search=14, group=14 (all Body); Fluent de-emphasizes chrome by
+#        COLOR (lighter neutral), not by shrinking the glyph below the 14px content
 # ============================================================
-Write-Host "`nBehavior 6: Fluent type ramp (item >= search > group)" -ForegroundColor Cyan
+Write-Host "`nBehavior 6: Fluent type ramp (content and chrome at Body 14)" -ForegroundColor Cyan
 
 $pasteSrc = Get-Content "src/QPasteWnd.cpp" -Raw
 
@@ -176,9 +177,9 @@ $groupFont = if ($groupFontMatch.Success) { [int]$groupFontMatch.Groups[1].Value
 
 Assert-Equal $itemFont 14 "Item content font is 14px (Fluent Body)"
 Assert-Equal $searchFont 14 "Search font is 14px (Fluent Body, parity with content)"
-Assert-Equal $groupFont 12 "Group label font is 12px (Fluent Caption)"
+Assert-Equal $groupFont 14 "Group label font is 14px (Body); de-emphasized by color, not by shrinking"
 Assert-True ($itemFont -ge $searchFont) "Content font >= search chrome (no inverted hierarchy)"
-Assert-True ($searchFont -gt $groupFont) "Search font > group label (clean ramp)"
+Assert-True ($searchFont -ge $groupFont) "Chrome fonts at parity (Body 14); hierarchy via color not size"
 
 # ============================================================
 # Behavior 7: Item text word-wraps and is top-aligned (Win+V)

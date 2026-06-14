@@ -27,9 +27,11 @@ public:
 	static WORD		PaletteSize(LPSTR lpDIB);
 	static WORD		DIBNumColors(LPSTR lpDIB);
 	static bool		DrawDIB(CDC* pDC, HANDLE hData, int nLeft, int nRight, int& nWidth);
-	// Win+V-style image card: scale the clip image to COVER rc (fill width+height), center-cropping
-	// the overflow, so the preview fills the card edge-to-edge instead of a small centered thumbnail.
-	static BOOL		DrawImageCover(void* pClip2, CDC* pDC, const CRect& rc, int cornerRadius = 0);
+	// Win+V-style image card: COVER-fill rc (fill width+height, center-crop the overflow) from an
+	// already-decoded, cached DIB (the one GetDibFittingToHeight returns). Uses StretchDIBits on
+	// the cached bits — it never re-decodes the clip, so it is race-safe with the background
+	// pre-cache thread (re-decoding per paint corrupted previews on scroll).
+	static BOOL		DrawDibCover(CDC* pDC, HANDLE hData, const CRect& rc, int cornerRadius = 0);
 
 };
 

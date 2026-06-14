@@ -71,6 +71,7 @@ protected:
 	afx_msg void OnRclickQuickPaste(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	//}}AFX_MSG
+	afx_msg void OnCustomDraw(NMHDR* pNMHDR, LRESULT* pResult);
 
 	DECLARE_MESSAGE_MAP()
 	// Generated OLE dispatch map functions

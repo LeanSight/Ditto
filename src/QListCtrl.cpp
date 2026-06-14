@@ -32,7 +32,9 @@ static char THIS_FILE[] = __FILE__;
 // control is fixed-row-height (LVS_OWNERDRAWFIXED), so we make the ROW pitch tall enough
 // for a big image preview, then draw a SHORT card for text clips (top-aligned, content-fit)
 // and a tall card for image clips -- yielding Win+V-style variable card heights.
-#define IMAGE_CARD_LINES		5
+// Uniform card height like Win+V (no variable heights). Win+V cards are ~98px and fit ~2
+// wrapped text lines with breathing room; image clips cover-fill the same uniform card.
+#define IMAGE_CARD_LINES		3
 #define COLOR_SHADOW			RGB(245, 245, 245)
 #define DUMMY_COL_WIDTH			2
 
@@ -483,7 +485,11 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 			{
 				CRect rcParent;
 				pParent->GetClientRect(&rcParent);
-				visibleRight = rcParent.right - ::GetSystemMetrics(SM_CXVSCROLL);
+				// With the modern overlay scrollbar the native bar is pushed off-screen, so
+				// cards can use the full client width (overlay floats on top) — don't waste a
+				// scrollbar lane. Reserve the lane only for a real native scrollbar.
+				int sbLane = CGetSetOptions::m_useModernScrollBar ? 0 : ::GetSystemMetrics(SM_CXVSCROLL);
+				visibleRight = rcParent.right - sbLane;
 			}
 			if (visibleRight > 0 && rcItem.right > visibleRight)
 				rcItem.right = visibleRight;
@@ -640,11 +646,12 @@ void CQListCtrl::OnCustomdrawList(NMHDR* pNMHDR, LRESULT* pResult)
 
 		DrawCopiedColorCode(csText, rcText, pDC);
 
-		DrawBitMap(nItem, rcText, pDC, csText);
+		BOOL drewImage = DrawBitMap(nItem, rcText, pDC, csText);
 
-		// Image clips: drop the bare "CF_DIB" format-name label so the thumbnail stands
-		// alone like Win+V (which shows the image preview with no filename/format text).
-		if (csText.Find(_T("CF_DIB")) == 0 && GetItem_CF_DIB_ClipFormat(nItem) != NULL)
+		// Image clips: drop the bare "CF_DIB" format-name label so the preview stands alone
+		// like Win+V — but only when the image actually rendered, so a clip whose image
+		// failed to decode still shows its label instead of a blank card.
+		if (drewImage && csText.Find(_T("CF_DIB")) == 0)
 			csText.Empty();
 
 		// draw the symbol box
@@ -1271,15 +1278,20 @@ BOOL CQListCtrl::DrawBitMap(int nItem, CRect& crRect, CDC* pDC, const CString& c
 	if (CGetSetOptions::m_bDrawThumbnail == FALSE)
 		return FALSE;
 
+	bool drewImage = false;
 	CClipFormatQListCtrl* format = GetItem_CF_DIB_ClipFormat(nItem);
 	if (format != NULL)
 	{
-		// Win+V image card: fill the whole card with the preview (cover + center-crop) so it
-		// reads as a large edge-to-edge image, not a small centered thumbnail with side bands.
-		// Round the corners so the image card shares the text cards' rounded shell.
-		if (CBitmapHelper::DrawImageCover(format, pDC, crRect, m_windowDpi->Scale(6)))
+		// Win+V image card: COVER-fill the card edge-to-edge (rounded). Drawn from the cached
+		// DIB (GetDibFittingToHeight is guarded against the background pre-cache thread, so it
+		// is race-safe) via StretchDIBits — never re-decoding per paint, which previously raced
+		// with that thread and rendered corrupted previews on scroll.
+		HGLOBAL cachedDib = format->GetDibFittingToHeight(pDC, crRect.Height());
+		if (cachedDib != NULL &&
+			CBitmapHelper::DrawDibCover(pDC, cachedDib, crRect, m_windowDpi->Scale(6)))
 		{
 			crRect.left = crRect.right;   // image fills the card; no text gutter to reserve
+			drewImage = true;
 		}
 	}
 	else if (csDescription.Find(_T("CF_DIB")) == 0)
@@ -1287,7 +1299,9 @@ BOOL CQListCtrl::DrawBitMap(int nItem, CRect& crRect, CDC* pDC, const CString& c
 		crRect.left += crRect.Height();
 	}
 
-	return TRUE;
+	// TRUE only when a preview actually rendered, so the caller can keep the description
+	// label for image clips that failed to decode (instead of leaving a blank card).
+	return drewImage ? TRUE : FALSE;
 }
 
 void CQListCtrl::RefreshVisibleRows()

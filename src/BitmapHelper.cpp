@@ -98,35 +98,41 @@ BOOL CBitmapHelper::GetCBitmap(void* pClip2, CDC* pDC, CBitmap* pBitMap, int nMa
 	return true;
 }
 
-BOOL CBitmapHelper::DrawImageCover(void* pClip2, CDC* pDC, const CRect& rc, int cornerRadius)
+BOOL CBitmapHelper::DrawDibCover(CDC* pDC, HANDLE hData, const CRect& rc, int cornerRadius)
 {
-	CClipFormat* pClip = (CClipFormat*)pClip2;
-
-	if (pClip->m_cfType != CF_DIB && pClip->m_cfType != theApp.m_PNG_Format)
-		return FALSE;
-	if (rc.Width() <= 0 || rc.Height() <= 0)
+	if (hData == NULL || rc.Width() <= 0 || rc.Height() <= 0)
 		return FALSE;
 
-	Gdiplus::Bitmap* gdipBitmap = pClip->CreateGdiplusBitmap();
-	if (gdipBitmap == NULL)
+	LPBITMAPINFO lpBI = (LPBITMAPINFO)GlobalLock(hData);
+	if (!lpBI)
 		return FALSE;
 
-	const UINT sw = gdipBitmap->GetWidth();
-	const UINT sh = gdipBitmap->GetHeight();
-	if (sw == 0 || sh == 0)
+	int srcW = lpBI->bmiHeader.biWidth;
+	int srcH = abs(lpBI->bmiHeader.biHeight);
+	if (srcW <= 0 || srcH <= 0)
 	{
-		delete gdipBitmap;
+		GlobalUnlock(hData);
 		return FALSE;
 	}
 
-	// COVER: scale so the image fills rc on both axes, center-crop the overflowing axis.
-	double scale = max((double)rc.Width() / sw, (double)rc.Height() / sh);
-	double cropW = rc.Width() / scale;
-	double cropH = rc.Height() / scale;
-	double srcX = (sw - cropW) / 2.0;
-	double srcY = (sh - cropH) / 2.0;
+	// Locate the pixel bits after the header + color table (same layout DrawDIB uses).
+	int nColors = lpBI->bmiHeader.biClrUsed ? lpBI->bmiHeader.biClrUsed : 1 << lpBI->bmiHeader.biBitCount;
+	void* pDIBBits;
+	if (lpBI->bmiHeader.biBitCount > 8)
+		pDIBBits = (LPVOID)((LPDWORD)(lpBI->bmiColors + lpBI->bmiHeader.biClrUsed) +
+			((lpBI->bmiHeader.biCompression == BI_BITFIELDS) ? 3 : 0));
+	else
+		pDIBBits = (LPVOID)(lpBI->bmiColors + nColors);
 
-	// Round the preview's corners to match the card shell (Win+V image cards are rounded).
+	// COVER: scale so the image fills rc on both axes, center-crop the overflowing axis.
+	double scale = max((double)rc.Width() / srcW, (double)rc.Height() / srcH);
+	int cropW = (int)(rc.Width() / scale + 0.5);
+	int cropH = (int)(rc.Height() / scale + 0.5);
+	if (cropW > srcW) cropW = srcW;
+	if (cropH > srcH) cropH = srcH;
+	int srcX = (srcW - cropW) / 2;
+	int srcY = (srcH - cropH) / 2;   // DIB is bottom-up; StretchDIBits handles the flip
+
 	CRgn clipRgn;
 	if (cornerRadius > 0)
 	{
@@ -134,20 +140,19 @@ BOOL CBitmapHelper::DrawImageCover(void* pClip2, CDC* pDC, const CRect& rc, int 
 		pDC->SelectClipRgn(&clipRgn);
 	}
 
-	Gdiplus::Graphics graphics(pDC->GetSafeHdc());
-	Gdiplus::InterpolationMode interpolationMode = Gdiplus::InterpolationModeHighQualityBicubic;
-	if (CGetSetOptions::GetFastThumbnailMode())
-		interpolationMode = Gdiplus::InterpolationModeBicubic;
-	graphics.SetInterpolationMode(interpolationMode);
-	graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+	int oldMode = pDC->SetStretchBltMode(HALFTONE);
+	::SetBrushOrgEx(pDC->GetSafeHdc(), 0, 0, NULL);
 
-	Gdiplus::Rect dest(rc.left, rc.top, rc.Width(), rc.Height());
-	graphics.DrawImage(gdipBitmap, dest, (REAL)srcX, (REAL)srcY, (REAL)cropW, (REAL)cropH, Gdiplus::UnitPixel);
+	::StretchDIBits(pDC->m_hDC,
+		rc.left, rc.top, rc.Width(), rc.Height(),
+		srcX, srcY, cropW, cropH,
+		pDIBBits, lpBI, DIB_PAL_COLORS, SRCCOPY);
 
+	pDC->SetStretchBltMode(oldMode);
 	if (cornerRadius > 0)
 		pDC->SelectClipRgn(NULL);
 
-	delete gdipBitmap;
+	GlobalUnlock(hData);
 	return TRUE;
 }
 

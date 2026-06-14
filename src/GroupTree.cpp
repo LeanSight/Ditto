@@ -39,6 +39,7 @@ BEGIN_MESSAGE_MAP(CGroupTree, CTreeCtrl)
 	ON_NOTIFY_REFLECT(TVN_KEYDOWN, OnKeydown)
 	ON_WM_RBUTTONDOWN()
 	//}}AFX_MSG_MAP
+	ON_NOTIFY_REFLECT(NM_CUSTOMDRAW, OnCustomDraw)
 	ON_COMMAND(ID_MENU_NEWGROUP32896, &CGroupTree::OnMenuNewgroup32896)
 	ON_COMMAND(ID_MENU_DELETEGROUP, &CGroupTree::OnMenuDeletegroup)
 	ON_COMMAND(ID_MENU_PROPERTIES32898, &CGroupTree::OnMenuProperties32898)
@@ -251,13 +252,40 @@ void CGroupTree::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 	if(m_bHide)
 	{
 		if (nState == WA_INACTIVE)
-		{		
+		{
 			SendToParent(-1);
 		}
 	}
 }
 
-void CGroupTree::OnDblclk(NMHDR* pNMHDR, LRESULT* pResult) 
+// Win+V/Fluent selection: replace the harsh saturated system-blue (COLOR_HIGHLIGHT) bar
+// on the selected group node with the same subtle card-selection colors as the clip list.
+void CGroupTree::OnCustomDraw(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NMTVCUSTOMDRAW* pCD = (NMTVCUSTOMDRAW*)pNMHDR;
+	*pResult = CDRF_DODEFAULT;
+
+	switch (pCD->nmcd.dwDrawStage)
+	{
+	case CDDS_PREPAINT:
+		*pResult = CDRF_NOTIFYITEMDRAW;
+		break;
+
+	case CDDS_ITEMPREPAINT:
+	{
+		HTREEITEM hItem = (HTREEITEM)pCD->nmcd.dwItemSpec;
+		if (GetItemState(hItem, TVIS_SELECTED) & TVIS_SELECTED)
+		{
+			pCD->clrText = CGetSetOptions::m_Theme.ListBoxSelectedText();
+			pCD->clrTextBk = CGetSetOptions::m_Theme.ListBoxSelectedBG();
+		}
+		*pResult = CDRF_DODEFAULT;
+		break;
+	}
+	}
+}
+
+void CGroupTree::OnDblclk(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	HTREEITEM hItem =  GetNextItem(TVI_ROOT, TVGN_CARET);
 	if(hItem)
